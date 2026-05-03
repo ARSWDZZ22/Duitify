@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Money Tracker Mahasiswa",
-    "slug": "mobile",
+    "name": "Duitify",
+    "slug": "duitify",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "mobile",
+    "scheme": "duitify",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
@@ -14,9 +14,12 @@
       "backgroundColor": "#00C9A7"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.duitify.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.duitify.app"
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
