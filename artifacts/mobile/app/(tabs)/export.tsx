@@ -6,10 +6,12 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -137,12 +139,17 @@ function ArchiveCard({
   archive,
   onExport,
   onDelete,
+  onRename,
 }: {
   archive: RekapArchive;
   onExport: () => void;
   onDelete: () => void;
+  onRename: (newTitle: string) => void;
 }) {
   const colors = useColors();
+  const [showRename, setShowRename] = useState(false);
+  const [renameText, setRenameText] = useState(archive.title);
+
   const exportedDate = new Date(archive.exportedAt).toLocaleDateString('id-ID', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
@@ -150,58 +157,125 @@ function ArchiveCard({
     hour: '2-digit', minute: '2-digit',
   });
 
+  const handleRenameConfirm = () => {
+    if (renameText.trim()) {
+      onRename(renameText.trim());
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setShowRename(false);
+  };
+
   return (
-    <View style={[archiveStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={archiveStyles.cardTop}>
-        <View style={[archiveStyles.iconBox, { backgroundColor: '#00C9A718' }]}>
-          <Feather name="archive" size={18} color="#00C9A7" />
+    <>
+      <View style={[archiveStyles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={archiveStyles.cardTop}>
+          <View style={[archiveStyles.iconBox, { backgroundColor: '#00C9A718' }]}>
+            <Feather name="archive" size={18} color="#00C9A7" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[archiveStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
+              {archive.title}
+            </Text>
+            <Text style={[archiveStyles.cardMeta, { color: colors.mutedForeground }]}>
+              {exportedDate} pukul {exportedTime}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => { setRenameText(archive.title); setShowRename(true); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={archiveStyles.iconBtn}
+          >
+            <Feather name="edit-2" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} style={archiveStyles.iconBtn}>
+            <Feather name="trash-2" size={15} color={colors.mutedForeground} />
+          </TouchableOpacity>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[archiveStyles.cardTitle, { color: colors.foreground }]} numberOfLines={1}>
-            {archive.title}
+
+        <View style={[archiveStyles.cardDivider, { backgroundColor: colors.border }]} />
+
+        <View style={archiveStyles.statsRow}>
+          <View style={archiveStyles.statItem}>
+            <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Saldo Awal</Text>
+            <Text style={[archiveStyles.statValue, { color: '#00C9A7' }]}>{formatCurrency(archive.saldo_awal)}</Text>
+          </View>
+          <View style={[archiveStyles.statDivider, { backgroundColor: colors.border }]} />
+          <View style={archiveStyles.statItem}>
+            <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Total Keluar</Text>
+            <Text style={[archiveStyles.statValue, { color: '#FF5A5F' }]}>{formatCurrency(archive.total_pengeluaran)}</Text>
+          </View>
+          <View style={[archiveStyles.statDivider, { backgroundColor: colors.border }]} />
+          <View style={archiveStyles.statItem}>
+            <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Sisa</Text>
+            <Text style={[archiveStyles.statValue, { color: colors.foreground }]}>{formatCurrency(archive.sisa_saldo)}</Text>
+          </View>
+        </View>
+
+        <View style={archiveStyles.cardFooter}>
+          <Text style={[archiveStyles.periodText, { color: colors.mutedForeground }]}>
+            {archive.period} · {archive.jumlah_transaksi} transaksi
           </Text>
-          <Text style={[archiveStyles.cardMeta, { color: colors.mutedForeground }]}>
-            {exportedDate} pukul {exportedTime}
+          <TouchableOpacity
+            onPress={onExport}
+            style={[archiveStyles.reExportBtn, { backgroundColor: '#00C9A718' }]}
+            activeOpacity={0.8}
+          >
+            <Feather name="download" size={13} color="#00C9A7" />
+            <Text style={archiveStyles.reExportText}>Export Ulang</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* ── Rename Modal ── */}
+      <Modal visible={showRename} transparent animationType="slide" onRequestClose={() => setShowRename(false)}>
+        <TouchableOpacity style={archiveStyles.modalOverlay} activeOpacity={1} onPress={() => setShowRename(false)} />
+        <View style={[archiveStyles.modalSheet, { backgroundColor: colors.card }]}>
+          <View style={[archiveStyles.modalHandle, { backgroundColor: colors.border }]} />
+          <Text style={[archiveStyles.modalTitle, { color: colors.foreground }]}>Ganti Nama Rekap</Text>
+          <Text style={[archiveStyles.modalSub, { color: colors.mutedForeground }]}>
+            Beri nama yang mudah diingat, misalnya "Uang Kost Mei" atau "Minggu Pertama Juni"
           </Text>
+          <View style={[archiveStyles.modalInputWrapper, { borderColor: colors.border, backgroundColor: colors.background }]}>
+            <Feather name="edit-2" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={[archiveStyles.modalInput, { color: colors.foreground }]}
+              value={renameText}
+              onChangeText={setRenameText}
+              placeholder="Nama rekap..."
+              placeholderTextColor={colors.mutedForeground}
+              autoFocus
+              selectTextOnFocus
+              returnKeyType="done"
+              onSubmitEditing={handleRenameConfirm}
+              maxLength={60}
+            />
+            {renameText.length > 0 && (
+              <TouchableOpacity onPress={() => setRenameText('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={archiveStyles.modalBtns}>
+            <TouchableOpacity
+              onPress={() => setShowRename(false)}
+              style={[archiveStyles.modalBtnCancel, { borderColor: colors.border, backgroundColor: colors.background }]}
+              activeOpacity={0.8}
+            >
+              <Text style={[archiveStyles.modalBtnCancelText, { color: colors.mutedForeground }]}>Batal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleRenameConfirm}
+              disabled={!renameText.trim()}
+              style={[archiveStyles.modalBtnSave, { opacity: renameText.trim() ? 1 : 0.4 }]}
+              activeOpacity={0.85}
+            >
+              <Feather name="check" size={16} color="#fff" />
+              <Text style={archiveStyles.modalBtnSaveText}>Simpan</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity onPress={onDelete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-          <Feather name="trash-2" size={16} color={colors.mutedForeground} />
-        </TouchableOpacity>
-      </View>
-
-      <View style={[archiveStyles.cardDivider, { backgroundColor: colors.border }]} />
-
-      <View style={archiveStyles.statsRow}>
-        <View style={archiveStyles.statItem}>
-          <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Saldo Awal</Text>
-          <Text style={[archiveStyles.statValue, { color: '#00C9A7' }]}>{formatCurrency(archive.saldo_awal)}</Text>
-        </View>
-        <View style={[archiveStyles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={archiveStyles.statItem}>
-          <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Total Keluar</Text>
-          <Text style={[archiveStyles.statValue, { color: '#FF5A5F' }]}>{formatCurrency(archive.total_pengeluaran)}</Text>
-        </View>
-        <View style={[archiveStyles.statDivider, { backgroundColor: colors.border }]} />
-        <View style={archiveStyles.statItem}>
-          <Text style={[archiveStyles.statLabel, { color: colors.mutedForeground }]}>Sisa</Text>
-          <Text style={[archiveStyles.statValue, { color: colors.foreground }]}>{formatCurrency(archive.sisa_saldo)}</Text>
-        </View>
-      </View>
-
-      <View style={archiveStyles.cardFooter}>
-        <Text style={[archiveStyles.periodText, { color: colors.mutedForeground }]}>
-          <Feather name="calendar" size={11} /> {archive.period} · {archive.jumlah_transaksi} transaksi
-        </Text>
-        <TouchableOpacity
-          onPress={onExport}
-          style={[archiveStyles.reExportBtn, { backgroundColor: '#00C9A718' }]}
-          activeOpacity={0.8}
-        >
-          <Feather name="download" size={13} color="#00C9A7" />
-          <Text style={archiveStyles.reExportText}>Export Ulang</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+      </Modal>
+    </>
   );
 }
 
@@ -210,8 +284,9 @@ const archiveStyles = StyleSheet.create({
     borderRadius: 18, borderWidth: 1, marginBottom: 12, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
+  cardTop: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 16 },
   iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { padding: 4 },
   cardTitle: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
   cardMeta: { fontSize: 11, fontFamily: 'Inter_400Regular', marginTop: 2 },
   cardDivider: { height: 1, marginHorizontal: 16 },
@@ -230,6 +305,31 @@ const archiveStyles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
   },
   reExportText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#00C9A7' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
+  modalSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 24, paddingTop: 12, paddingBottom: 36,
+  },
+  modalHandle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontFamily: 'Inter_700Bold', marginBottom: 6 },
+  modalSub: { fontSize: 13, fontFamily: 'Inter_400Regular', marginBottom: 20, lineHeight: 20 },
+  modalInputWrapper: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 14, marginBottom: 20,
+  },
+  modalInput: { flex: 1, fontSize: 16, fontFamily: 'Inter_500Medium', padding: 0 },
+  modalBtns: { flexDirection: 'row', gap: 10 },
+  modalBtnCancel: {
+    flex: 1, borderRadius: 14, paddingVertical: 14, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalBtnCancelText: { fontSize: 15, fontFamily: 'Inter_500Medium' },
+  modalBtnSave: {
+    flex: 2, backgroundColor: '#00C9A7', borderRadius: 14, paddingVertical: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    shadowColor: '#00C9A7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4,
+  },
+  modalBtnSaveText: { color: '#fff', fontSize: 15, fontFamily: 'Inter_600SemiBold' },
 });
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -238,7 +338,7 @@ export default function ExportScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { saldo_awal, saldo_sekarang, transactions, getTotalByKategori, getTransactionsByDate } = useFinance();
-  const { archives, saveArchive, deleteArchive } = useArchive();
+  const { archives, saveArchive, deleteArchive, renameArchive } = useArchive();
   const [loading, setLoading] = useState(false);
   const [reExporting, setReExporting] = useState<string | null>(null);
 
@@ -459,6 +559,7 @@ export default function ExportScreen() {
               archive={archive}
               onExport={() => handleReExport(archive)}
               onDelete={() => handleDeleteArchive(archive)}
+              onRename={(newTitle) => renameArchive(archive.id, newTitle)}
             />
           ))
         )}

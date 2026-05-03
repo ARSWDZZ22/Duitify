@@ -9,6 +9,7 @@ interface ArchiveContextType {
   isLoading: boolean;
   saveArchive: (archive: Omit<RekapArchive, 'id' | 'exportedAt'>) => Promise<RekapArchive>;
   deleteArchive: (id: string) => Promise<void>;
+  renameArchive: (id: string, newTitle: string) => Promise<void>;
 }
 
 const ArchiveContext = createContext<ArchiveContextType | null>(null);
@@ -49,8 +50,14 @@ export function ArchiveProvider({ children }: { children: React.ReactNode }) {
     await persist(next);
   };
 
+  const renameArchive = async (id: string, newTitle: string) => {
+    const next = archives.map(a => a.id === id ? { ...a, title: newTitle.trim() } : a);
+    setArchives(next);
+    await persist(next);
+  };
+
   return (
-    <ArchiveContext.Provider value={{ archives, isLoading, saveArchive, deleteArchive }}>
+    <ArchiveContext.Provider value={{ archives, isLoading, saveArchive, deleteArchive, renameArchive }}>
       {children}
     </ArchiveContext.Provider>
   );
