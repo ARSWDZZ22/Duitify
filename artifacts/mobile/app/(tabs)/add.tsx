@@ -43,10 +43,6 @@ export default function AddScreen() {
     return num.toLocaleString('id-ID');
   };
 
-  const handleHargaChange = (text: string) => {
-    setHargaText(formatHarga(text));
-  };
-
   const isValid = namaBarang.trim().length > 0 && harga > 0;
 
   const handleSave = async () => {
@@ -70,11 +66,13 @@ export default function AddScreen() {
   };
 
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
+  const bottomPad = insets.bottom + 90;
 
   return (
     <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
     >
       <View style={[styles.header, { paddingTop: topPad + 16, backgroundColor: colors.background }]}>
         <Text style={[styles.headerTitle, { color: colors.foreground }]}>Tambah Pengeluaran</Text>
@@ -84,7 +82,7 @@ export default function AddScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -99,7 +97,6 @@ export default function AddScreen() {
             onChangeText={setNamaBarang}
             returnKeyType="next"
             onSubmitEditing={() => hargaInputRef.current?.focus()}
-            autoFocus
           />
         </View>
 
@@ -112,7 +109,7 @@ export default function AddScreen() {
             placeholder="0"
             placeholderTextColor={colors.mutedForeground}
             value={hargaText}
-            onChangeText={handleHargaChange}
+            onChangeText={v => setHargaText(formatHarga(v))}
             keyboardType="numeric"
             returnKeyType="done"
           />
@@ -134,43 +131,22 @@ export default function AddScreen() {
                 style={[
                   styles.kategoriBtn,
                   {
-                    backgroundColor: isSelected ? `${color}18` : colors.card,
+                    backgroundColor: isSelected ? color : colors.card,
                     borderColor: isSelected ? color : colors.border,
                     borderWidth: isSelected ? 2 : 1,
                   },
                 ]}
                 activeOpacity={0.8}
               >
-                <View style={[styles.kategoriIcon, { backgroundColor: `${color}22` }]}>
-                  <Feather name={icon} size={20} color={color} />
+                <View style={[styles.kategoriIcon, { backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : `${color}22` }]}>
+                  <Feather name={icon} size={20} color={isSelected ? '#fff' : color} />
                 </View>
-                <Text style={[styles.kategoriLabel, { color: isSelected ? color : colors.foreground }]}>{k}</Text>
+                <Text style={[styles.kategoriLabel, { color: isSelected ? '#fff' : colors.foreground }]}>{k}</Text>
               </TouchableOpacity>
             );
           })}
         </View>
 
-        <View style={[styles.summaryBox, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryKey, { color: colors.mutedForeground }]}>Barang</Text>
-            <Text style={[styles.summaryVal, { color: colors.foreground }]} numberOfLines={1}>
-              {namaBarang || '-'}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryKey, { color: colors.mutedForeground }]}>Harga</Text>
-            <Text style={[styles.summaryVal, { color: '#FF5A5F', fontFamily: 'Inter_700Bold' }]}>
-              {harga > 0 ? `Rp ${harga.toLocaleString('id-ID')}` : '-'}
-            </Text>
-          </View>
-          <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
-            <Text style={[styles.summaryKey, { color: colors.mutedForeground }]}>Kategori</Text>
-            <Text style={[styles.summaryVal, { color: KATEGORI_COLORS[selectedKategori] }]}>{selectedKategori}</Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={handleSave}
           disabled={!isValid || saving}
@@ -182,17 +158,27 @@ export default function AddScreen() {
           ) : (
             <>
               <Feather name="check-circle" size={20} color="#fff" />
-              <Text style={styles.saveBtnText}>Simpan</Text>
+              <Text style={styles.saveBtnText}>Simpan Pengeluaran</Text>
             </>
           )}
         </TouchableOpacity>
-      </View>
+
+        {!isValid && (
+          <Text style={[styles.hintText, { color: colors.mutedForeground }]}>
+            {!namaBarang.trim() ? 'Isi nama barang terlebih dahulu' : 'Isi harga terlebih dahulu'}
+          </Text>
+        )}
+      </ScrollView>
 
       {showSuccess && (
         <Animated.View
           style={[
             styles.successToast,
-            { opacity: successAnim, transform: [{ translateY: successAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] },
+            {
+              opacity: successAnim,
+              transform: [{ translateY: successAnim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+              bottom: bottomPad + 16,
+            },
           ]}
         >
           <Feather name="check-circle" size={16} color="#fff" />
@@ -205,7 +191,7 @@ export default function AddScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
+  header: { paddingHorizontal: 20, paddingBottom: 12 },
   headerTitle: { fontSize: 24, fontFamily: 'Inter_700Bold', marginBottom: 4 },
   headerSub: { fontSize: 13, fontFamily: 'Inter_400Regular' },
   content: { paddingHorizontal: 20, paddingTop: 8 },
@@ -239,47 +225,30 @@ const styles = StyleSheet.create({
   },
   kategoriIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   kategoriLabel: { fontSize: 14, fontFamily: 'Inter_600SemiBold' },
-  summaryBox: {
-    marginTop: 20,
-    borderRadius: 16,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E4E9F0',
-  },
-  summaryKey: { fontSize: 13, fontFamily: 'Inter_400Regular' },
-  summaryVal: { fontSize: 13, fontFamily: 'Inter_600SemiBold', maxWidth: '60%', textAlign: 'right' },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E4E9F0',
-  },
   saveBtn: {
     backgroundColor: '#00C9A7',
     borderRadius: 16,
-    paddingVertical: 16,
+    paddingVertical: 17,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
+    marginTop: 24,
     shadowColor: '#00C9A7',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 5,
   },
   saveBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  hintText: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginTop: 10,
+  },
   successToast: {
     position: 'absolute',
-    bottom: 120,
     alignSelf: 'center',
     backgroundColor: '#00C9A7',
     borderRadius: 12,
