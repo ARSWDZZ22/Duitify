@@ -656,7 +656,7 @@ export default function ExportScreen() {
         </View>
 
         {/* ── Backup & Restore ── */}
-        <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
+        <View style={[styles.sectionHeaderRow, { marginTop: 20 }]}>
           <View style={[styles.sectionBadge, { backgroundColor: '#4ECDC422' }]}>
             <Feather name="shield" size={12} color="#4ECDC4" />
             <Text style={[styles.sectionBadgeText, { color: '#4ECDC4' }]}>BACKUP & RESTORE</Text>
@@ -664,58 +664,53 @@ export default function ExportScreen() {
         </View>
 
         <View style={[styles.backupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={styles.backupHeader}>
-            <View style={[styles.backupIconWrap, { backgroundColor: '#4ECDC422' }]}>
-              <Feather name="hard-drive" size={22} color="#4ECDC4" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.backupTitle, { color: colors.foreground }]}>Keamanan Data</Text>
-              <Text style={[styles.backupDesc, { color: colors.mutedForeground }]}>
-                Simpan semua data ke file JSON. Bisa dipulihkan kapan saja, bahkan setelah ganti HP.
+          {Platform.OS === 'web' ? (
+            <View style={styles.backupWebNote}>
+              <Feather name="smartphone" size={16} color="#4ECDC4" />
+              <Text style={[styles.backupWebNoteText, { color: colors.mutedForeground }]}>
+                Fitur Backup & Restore hanya tersedia di aplikasi HP (Android/iOS). Buka via Expo Go untuk menggunakannya.
               </Text>
             </View>
-          </View>
+          ) : (
+            <>
+              <View style={styles.backupBtnRow}>
+                <TouchableOpacity
+                  onPress={handleBackup}
+                  disabled={backingUp}
+                  style={[styles.backupBtn, { backgroundColor: '#4ECDC4' }]}
+                  activeOpacity={0.85}
+                >
+                  {backingUp ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Feather name="download-cloud" size={15} color="#fff" />
+                      <Text style={styles.backupBtnText}>Backup</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-          <View style={styles.backupBtnRow}>
-            <TouchableOpacity
-              onPress={handleBackup}
-              disabled={backingUp}
-              style={[styles.backupBtn, { backgroundColor: '#4ECDC4' }]}
-              activeOpacity={0.85}
-            >
-              {backingUp ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                <>
-                  <Feather name="download-cloud" size={16} color="#fff" />
-                  <Text style={styles.backupBtnText}>Backup Data</Text>
-                </>
-              )}
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={handleRestore}
-              disabled={restoring}
-              style={[styles.backupBtn, { backgroundColor: colors.muted, borderWidth: 1.5, borderColor: '#4ECDC4' }]}
-              activeOpacity={0.85}
-            >
-              {restoring ? (
-                <ActivityIndicator color="#4ECDC4" size="small" />
-              ) : (
-                <>
-                  <Feather name="upload-cloud" size={16} color="#4ECDC4" />
-                  <Text style={[styles.backupBtnText, { color: '#4ECDC4' }]}>Restore Data</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <View style={[styles.backupTips, { backgroundColor: '#4ECDC410' }]}>
-            <Feather name="check-circle" size={12} color="#4ECDC4" />
-            <Text style={[styles.backupTipText, { color: '#2BB5AF' }]}>
-              File backup bisa disimpan ke Google Drive, WhatsApp, atau email untuk keamanan ekstra.
-            </Text>
-          </View>
+                <TouchableOpacity
+                  onPress={handleRestore}
+                  disabled={restoring}
+                  style={[styles.backupBtn, { backgroundColor: colors.muted, borderWidth: 1.5, borderColor: '#4ECDC4' }]}
+                  activeOpacity={0.85}
+                >
+                  {restoring ? (
+                    <ActivityIndicator color="#4ECDC4" size="small" />
+                  ) : (
+                    <>
+                      <Feather name="upload-cloud" size={15} color="#4ECDC4" />
+                      <Text style={[styles.backupBtnText, { color: '#4ECDC4' }]}>Restore</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+              <Text style={[styles.backupHint, { color: colors.mutedForeground }]}>
+                Simpan backup ke Google Drive atau WhatsApp agar data aman saat ganti HP.
+              </Text>
+            </>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -782,19 +777,16 @@ const styles = StyleSheet.create({
   },
   infoText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', color: '#009B81', lineHeight: 18 },
   backupCard: {
-    borderRadius: 20, borderWidth: 1, padding: 16,
+    borderRadius: 16, borderWidth: 1, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
-  backupHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  backupIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  backupTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', marginBottom: 3 },
-  backupDesc: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
-  backupBtnRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  backupWebNote: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  backupWebNoteText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
+  backupBtnRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   backupBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, borderRadius: 12, paddingVertical: 12,
+    gap: 6, borderRadius: 10, paddingVertical: 11,
   },
   backupBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#fff' },
-  backupTips: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 10, padding: 10 },
-  backupTipText: { flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16 },
+  backupHint: { fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16, textAlign: 'center' },
 });

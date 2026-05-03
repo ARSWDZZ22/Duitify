@@ -2,6 +2,7 @@ import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import React, { useMemo, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
   Platform,
   ScrollView,
@@ -14,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BalanceCard from '@/components/BalanceCard';
 import TransactionItem from '@/components/TransactionItem';
+import { useTheme } from '@/context/ThemeContext';
 import { KATEGORI_COLORS, useFinance } from '@/context/FinanceContext';
 import { useColors } from '@/hooks/useColors';
 import { Kategori } from '@/types';
@@ -22,6 +24,7 @@ import { formatCurrency, formatDate, getTodayString } from '@/utils/format';
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { toggleTheme, isDark } = useTheme();
   const {
     saldo_awal, saldo_sekarang, transactions,
     isLoading, setSaldoAwal, deleteTransaction,
@@ -69,15 +72,24 @@ export default function HomeScreen() {
         <View style={[styles.header, { paddingTop: topPad + 16 }]}>
           <View>
             <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Selamat datang,</Text>
-            <Text style={[styles.appName, { color: colors.foreground }]}>Tracker Mahasiswa</Text>
+            <Text style={[styles.appName, { color: colors.foreground }]}>Duitify</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => { setShowModal(true); setInputSaldo(''); }}
-            style={[styles.editBalBtn, { backgroundColor: colors.card }]}
-            activeOpacity={0.8}
-          >
-            <Feather name="edit-2" size={16} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={() => { toggleTheme(); Haptics.selectionAsync(); }}
+              style={[styles.iconBtn, { backgroundColor: colors.card }]}
+              activeOpacity={0.8}
+            >
+              <Feather name={isDark ? 'sun' : 'moon'} size={16} color={colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => { setShowModal(true); setInputSaldo(''); }}
+              style={[styles.iconBtn, { backgroundColor: colors.card }]}
+              activeOpacity={0.8}
+            >
+              <Feather name="edit-2" size={16} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {saldo_awal === 0 ? (
@@ -135,10 +147,7 @@ export default function HomeScreen() {
                     <View
                       style={[
                         styles.bar,
-                        {
-                          backgroundColor: k.color,
-                          width: `${(k.total / maxKategori) * 100}%` as any,
-                        },
+                        { backgroundColor: k.color, width: `${(k.total / maxKategori) * 100}%` as any },
                       ]}
                     />
                   </View>
@@ -173,40 +182,45 @@ export default function HomeScreen() {
       </ScrollView>
 
       <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setShowModal(false)}
-        />
-        <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }]}>
-          <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
-          <Text style={[styles.modalTitle, { color: colors.foreground }]}>
-            {saldo_awal > 0 ? 'Ubah Saldo Awal' : 'Set Saldo Awal'}
-          </Text>
-          <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
-            Masukkan jumlah uang yang kamu miliki saat ini
-          </Text>
-          <View style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.background }]}>
-            <Text style={[styles.rpPrefix, { color: colors.mutedForeground }]}>Rp</Text>
-            <TextInput
-              style={[styles.modalTextInput, { color: colors.foreground }]}
-              placeholder="Contoh: 300.000"
-              placeholderTextColor={colors.mutedForeground}
-              value={inputSaldo}
-              onChangeText={v => setInputSaldo(formatSaldoInput(v))}
-              keyboardType="numeric"
-              autoFocus
-            />
-          </View>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
           <TouchableOpacity
-            onPress={handleSaveSaldo}
-            style={[styles.modalBtn, { opacity: inputSaldo ? 1 : 0.4 }]}
-            disabled={!inputSaldo}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.modalBtnText}>Simpan</Text>
-          </TouchableOpacity>
-        </View>
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowModal(false)}
+          />
+          <View style={[styles.modalSheet, { backgroundColor: colors.card, paddingBottom: insets.bottom + 20 }]}>
+            <View style={[styles.modalHandle, { backgroundColor: colors.border }]} />
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              {saldo_awal > 0 ? 'Ubah Saldo Awal' : 'Set Saldo Awal'}
+            </Text>
+            <Text style={[styles.modalSub, { color: colors.mutedForeground }]}>
+              Masukkan jumlah uang yang kamu miliki saat ini
+            </Text>
+            <View style={[styles.modalInput, { borderColor: colors.border, backgroundColor: colors.background }]}>
+              <Text style={[styles.rpPrefix, { color: colors.mutedForeground }]}>Rp</Text>
+              <TextInput
+                style={[styles.modalTextInput, { color: colors.foreground }]}
+                placeholder="Contoh: 300.000"
+                placeholderTextColor={colors.mutedForeground}
+                value={inputSaldo}
+                onChangeText={v => setInputSaldo(formatSaldoInput(v))}
+                keyboardType="numeric"
+                autoFocus
+              />
+            </View>
+            <TouchableOpacity
+              onPress={handleSaveSaldo}
+              style={[styles.modalBtn, { opacity: inputSaldo ? 1 : 0.4 }]}
+              disabled={!inputSaldo}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.modalBtnText}>Simpan</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -223,7 +237,8 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   appName: { fontSize: 22, fontFamily: 'Inter_700Bold', letterSpacing: -0.5 },
-  editBalBtn: {
+  headerActions: { flexDirection: 'row', gap: 8 },
+  iconBtn: {
     width: 40, height: 40, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
@@ -235,9 +250,7 @@ const styles = StyleSheet.create({
   },
   setupTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', color: '#00C9A7', marginBottom: 2 },
   setupSub: { fontSize: 12, fontFamily: 'Inter_400Regular', color: '#009B81' },
-  quickStats: {
-    flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 16,
-  },
+  quickStats: { flexDirection: 'row', paddingHorizontal: 20, gap: 10, marginTop: 16 },
   statBox: {
     flex: 1, borderRadius: 16, padding: 14, alignItems: 'center', gap: 6,
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
@@ -266,7 +279,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
   modalSheet: {
     borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 24, paddingTop: 12,
   },
