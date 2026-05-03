@@ -1,0 +1,73 @@
+Buatkan sebuah aplikasi mobile bernama "Money Tracker Mahasiswa" dengan fungsi utama untuk mencatat dan membuat laporan pengeluaran harian secara otomatis dan rapi.
+🎯 Tujuan aplikasi:
+Membantu mahasiswa mencatat pengeluaran harian, memantau sisa saldo, dan menghasilkan laporan transparan yang bisa dikirim ke orang tua.
+📱 FITUR UTAMA:
+Input Uang Masuk
+User dapat memasukkan jumlah uang awal (contoh: 300000)
+Saldo awal tersimpan dan menjadi dasar perhitungan
+Input Pengeluaran (Quick Input)
+Field:
+Nama barang (text)
+Harga (number)
+Kategori (dropdown: Makan, Transport, Jajan, Lainnya)
+Otomatis:
+Tanggal (auto)
+Jam (auto)
+Setelah disimpan:
+Saldo otomatis berkurang
+Tampilan Saldo
+Tampilkan:
+Saldo awal
+Saldo saat ini (real-time)
+Riwayat Transaksi
+Ditampilkan per hari (group by date)
+Format:
+Tanggal (contoh: Senin, 3 Mei 2026)
+List transaksi:
+Jam | Nama barang | Harga
+Tampilkan total pengeluaran per hari
+Export / Cetak Laporan
+User dapat export laporan dalam bentuk:
+Gambar (PNG)
+PDF
+Format laporan:
+Judul: Laporan Pengeluaran
+Periode tanggal
+Total uang masuk
+Total pengeluaran
+Sisa saldo
+Detail transaksi (tanggal + jam + item + harga)
+UI/UX
+Desain minimalis, modern, dan mudah digunakan
+Navigasi sederhana:
+Home (saldo + ringkasan)
+Tambah (input pengeluaran)
+Riwayat
+Export
+📊 STRUKTUR DATA:
+Collection: transactions
+id
+nama_barang
+harga
+kategori
+tanggal (date)
+jam (time)
+Collection: finance
+saldo_awal
+saldo_sekarang
+⚙️ LOGIKA:
+Saat user input pengeluaran:
+saldo_sekarang = saldo_sekarang - harga
+Total pengeluaran = sum semua transaksi
+Data otomatis tersimpan secara real-time
+🎨 TAMBAHAN (opsional jika bisa):
+Grafik pengeluaran berdasarkan kategori
+Notifikasi jika saldo menipis
+Budget harian otomatis
+📌 PRIORITAS:
+Aplikasi harus cepat digunakan (input < 5 detik)
+Semua tanggal & jam harus otomatis
+Fokus pada kemudahan dan kejelasan laporan
+Buatkan aplikasi ini lengkap dengan UI, database, dan logic siap digunakan. dengan React Native + Firebase untuk implementasi"
+👉 “Buat UI lebih modern seperti aplikasi keuangan profesional (clean, minimal, warna soft, mudah dibaca)”
+👉 “Optimalkan agar user bisa input hanya dalam 1 layar tanpa ribet”
