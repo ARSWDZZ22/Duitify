@@ -10,6 +10,7 @@ interface ArchiveContextType {
   saveArchive: (archive: Omit<RekapArchive, 'id' | 'exportedAt'>) => Promise<RekapArchive>;
   deleteArchive: (id: string) => Promise<void>;
   renameArchive: (id: string, newTitle: string) => Promise<void>;
+  importArchivesData: (data: RekapArchive[]) => Promise<void>;
 }
 
 const ArchiveContext = createContext<ArchiveContextType | null>(null);
@@ -56,8 +57,13 @@ export function ArchiveProvider({ children }: { children: React.ReactNode }) {
     await persist(next);
   };
 
+  const importArchivesData = async (data: RekapArchive[]) => {
+    setArchives(data);
+    await persist(data);
+  };
+
   return (
-    <ArchiveContext.Provider value={{ archives, isLoading, saveArchive, deleteArchive, renameArchive }}>
+    <ArchiveContext.Provider value={{ archives, isLoading, saveArchive, deleteArchive, renameArchive, importArchivesData }}>
       {children}
     </ArchiveContext.Provider>
   );

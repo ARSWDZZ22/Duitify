@@ -1,4 +1,6 @@
 import { Feather } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
@@ -21,6 +23,16 @@ import { KATEGORI_COLORS, useFinance } from '@/context/FinanceContext';
 import { useColors } from '@/hooks/useColors';
 import { Kategori, RekapArchive, Transaction } from '@/types';
 import { formatCurrency, formatDate, getDateRange } from '@/utils/format';
+
+const BACKUP_VERSION = '1.0';
+
+interface BackupFile {
+  version: string;
+  appName: string;
+  exportedAt: number;
+  finance: { saldo_awal: number; transactions: Transaction[] };
+  archives: RekapArchive[];
+}
 
 // ─── HTML Report Generator ────────────────────────────────────────────────────
 
@@ -337,10 +349,12 @@ const archiveStyles = StyleSheet.create({
 export default function ExportScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { saldo_awal, saldo_sekarang, transactions, getTotalByKategori, getTransactionsByDate } = useFinance();
-  const { archives, saveArchive, deleteArchive, renameArchive } = useArchive();
+  const { saldo_awal, saldo_sekarang, transactions, getTotalByKategori, getTransactionsByDate, importFinanceData, getRawData } = useFinance();
+  const { archives, saveArchive, deleteArchive, renameArchive, importArchivesData } = useArchive();
   const [loading, setLoading] = useState(false);
   const [reExporting, setReExporting] = useState<string | null>(null);
+  const [backingUp, setBackingUp] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const totalPengeluaran = saldo_awal - saldo_sekarang;
   const kategoriData = getTotalByKategori();
@@ -430,6 +444,76 @@ export default function ExportScreen() {
           onPress: async () => {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             await deleteArchive(archive.id);
+          },
+        },
+      ],
+    );
+  };
+
+  const handleBackup = async () => {
+    setBackingUp(true);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    try {
+      const backup: BackupFile = {
+        version: BACKUP_VERSION,
+        appName: 'Duitify',
+        exportedAt: Date.now(),
+        finance: getRawData(),
+        archives,
+      };
+      const json = JSON.stringify(backup, null, 2);
+      const date = new Date().toISOString().split('T')[0];
+      const filename = `duitify_backup_${date}.json`;
+      const path = `${FileSystem.cacheDirectory}${filename}`;
+      await FileSystem.writeAsStringAsync(path, json, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(path, { mimeType: 'application/json', dialogTitle: 'Simpan File Backup' });
+    } catch (e) {
+      Alert.alert('Gagal', 'Backup gagal. Coba lagi.');
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    Alert.alert(
+      'Restore Data',
+      'Data saat ini (transaksi & saldo) akan diganti dengan data dari file backup. Arsip akan digabung. Lanjutkan?',
+      [
+        { text: 'Batal', style: 'cancel' },
+        {
+          text: 'Restore', style: 'destructive',
+          onPress: async () => {
+            setRestoring(true);
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            try {
+              const result = await DocumentPicker.getDocumentAsync({
+                type: 'application/json',
+                copyToCacheDirectory: true,
+              });
+              if (result.canceled || !result.assets?.[0]) {
+                setRestoring(false);
+                return;
+              }
+              const fileUri = result.assets[0].uri;
+              const content = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.UTF8 });
+              const backup: BackupFile = JSON.parse(content);
+              if (!backup.version || backup.appName !== 'Duitify' || !backup.finance) {
+                Alert.alert('File Tidak Valid', 'File yang dipilih bukan file backup Duitify.');
+                setRestoring(false);
+                return;
+              }
+              await importFinanceData(backup.finance);
+              if (backup.archives?.length) {
+                const existingIds = new Set(archives.map(a => a.id));
+                const merged = [...archives, ...backup.archives.filter(a => !existingIds.has(a.id))];
+                await importArchivesData(merged);
+              }
+              Alert.alert('Berhasil!', `Data berhasil dipulihkan.\n${backup.finance.transactions.length} transaksi & ${backup.archives?.length ?? 0} arsip.`);
+            } catch (e) {
+              Alert.alert('Gagal', 'File backup rusak atau tidak valid.');
+            } finally {
+              setRestoring(false);
+            }
           },
         },
       ],
@@ -570,6 +654,69 @@ export default function ExportScreen() {
             Setiap kali kamu export, rekap otomatis disimpan di Arsip. Data transaksi terbaru tidak akan terhapus.
           </Text>
         </View>
+
+        {/* ── Backup & Restore ── */}
+        <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
+          <View style={[styles.sectionBadge, { backgroundColor: '#4ECDC422' }]}>
+            <Feather name="shield" size={12} color="#4ECDC4" />
+            <Text style={[styles.sectionBadgeText, { color: '#4ECDC4' }]}>BACKUP & RESTORE</Text>
+          </View>
+        </View>
+
+        <View style={[styles.backupCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={styles.backupHeader}>
+            <View style={[styles.backupIconWrap, { backgroundColor: '#4ECDC422' }]}>
+              <Feather name="hard-drive" size={22} color="#4ECDC4" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.backupTitle, { color: colors.foreground }]}>Keamanan Data</Text>
+              <Text style={[styles.backupDesc, { color: colors.mutedForeground }]}>
+                Simpan semua data ke file JSON. Bisa dipulihkan kapan saja, bahkan setelah ganti HP.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.backupBtnRow}>
+            <TouchableOpacity
+              onPress={handleBackup}
+              disabled={backingUp}
+              style={[styles.backupBtn, { backgroundColor: '#4ECDC4' }]}
+              activeOpacity={0.85}
+            >
+              {backingUp ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Feather name="download-cloud" size={16} color="#fff" />
+                  <Text style={styles.backupBtnText}>Backup Data</Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleRestore}
+              disabled={restoring}
+              style={[styles.backupBtn, { backgroundColor: colors.muted, borderWidth: 1.5, borderColor: '#4ECDC4' }]}
+              activeOpacity={0.85}
+            >
+              {restoring ? (
+                <ActivityIndicator color="#4ECDC4" size="small" />
+              ) : (
+                <>
+                  <Feather name="upload-cloud" size={16} color="#4ECDC4" />
+                  <Text style={[styles.backupBtnText, { color: '#4ECDC4' }]}>Restore Data</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={[styles.backupTips, { backgroundColor: '#4ECDC410' }]}>
+            <Feather name="check-circle" size={12} color="#4ECDC4" />
+            <Text style={[styles.backupTipText, { color: '#2BB5AF' }]}>
+              File backup bisa disimpan ke Google Drive, WhatsApp, atau email untuk keamanan ekstra.
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -634,4 +781,20 @@ const styles = StyleSheet.create({
     borderRadius: 12, padding: 14, marginTop: 12,
   },
   infoText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', color: '#009B81', lineHeight: 18 },
+  backupCard: {
+    borderRadius: 20, borderWidth: 1, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  backupHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  backupIconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  backupTitle: { fontSize: 15, fontFamily: 'Inter_700Bold', marginBottom: 3 },
+  backupDesc: { fontSize: 12, fontFamily: 'Inter_400Regular', lineHeight: 18 },
+  backupBtnRow: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  backupBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, borderRadius: 12, paddingVertical: 12,
+  },
+  backupBtnText: { fontSize: 13, fontFamily: 'Inter_600SemiBold', color: '#fff' },
+  backupTips: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, borderRadius: 10, padding: 10 },
+  backupTipText: { flex: 1, fontSize: 11, fontFamily: 'Inter_400Regular', lineHeight: 16 },
 });

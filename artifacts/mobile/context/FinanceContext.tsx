@@ -15,6 +15,8 @@ interface FinanceContextType {
   getTotalToday: () => number;
   getTransactionsByDate: () => { date: string; transactions: Transaction[]; total: number }[];
   getTotalByKategori: () => { kategori: Kategori; total: number; color: string }[];
+  importFinanceData: (data: FinanceData) => Promise<void>;
+  getRawData: () => FinanceData;
 }
 
 const FinanceContext = createContext<FinanceContextType | null>(null);
@@ -110,11 +112,20 @@ export function FinanceProvider({ children }: { children: React.ReactNode }) {
     }));
   };
 
+  const importFinanceData = async (data: FinanceData) => {
+    setSaldoAwalState(data.saldo_awal);
+    setTransactions(data.transactions ?? []);
+    await saveData(data);
+  };
+
+  const getRawData = (): FinanceData => ({ saldo_awal, transactions });
+
   return (
     <FinanceContext.Provider value={{
       saldo_awal, saldo_sekarang, transactions, isLoading,
       setSaldoAwal, addTransaction, deleteTransaction,
       getTotalToday, getTransactionsByDate, getTotalByKategori,
+      importFinanceData, getRawData,
     }}>
       {children}
     </FinanceContext.Provider>
