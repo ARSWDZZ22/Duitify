@@ -21,37 +21,46 @@ import { formatCurrency, formatDate, getDateRange } from '@/utils/format';
 export default function ExportScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { saldo_awal, saldo_sekarang, transactions, getTotalByKategori } = useFinance();
+  const { saldo_awal, saldo_sekarang, transactions, getTotalByKategori, getTransactionsByDate } = useFinance();
   const [loading, setLoading] = useState(false);
 
   const totalPengeluaran = saldo_awal - saldo_sekarang;
   const kategoriData = getTotalByKategori();
+  const grouped = getTransactionsByDate();
   const topKategori = [...kategoriData].sort((a, b) => b.total - a.total)[0];
   const period = getDateRange(transactions);
   const topPad = Platform.OS === 'web' ? 67 : insets.top;
 
   const generateHTML = () => {
-    const rows = transactions
-      .slice()
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .map(t => `
+    const groupRows = grouped.map(g => {
+      const txRows = g.transactions.map(t => `
         <tr>
-          <td>${formatDate(t.tanggal)}</td>
-          <td>${t.jam}</td>
-          <td>${t.nama_barang}</td>
-          <td style="color:#A29BFE">${t.kategori}</td>
-          <td class="amount">Rp ${t.harga.toLocaleString('id-ID')}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;">${t.jam}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;">${t.nama_barang}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;">
+            <span style="background:${KATEGORI_COLORS[t.kategori]}22;color:${KATEGORI_COLORS[t.kategori]};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${t.kategori}</span>
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;font-weight:700;color:#FF5A5F;text-align:right;">Rp ${t.harga.toLocaleString('id-ID')}</td>
         </tr>
       `).join('');
+      return `
+        <tr><td colspan="4" style="background:#E8F9F6;padding:10px 12px;font-weight:700;color:#009B81;font-size:13px;border-top:2px solid #00C9A7;">
+          ${formatDate(g.date)} — Total: Rp ${g.total.toLocaleString('id-ID')}
+        </td></tr>
+        ${txRows}
+      `;
+    }).join('');
 
     const kategoriRows = kategoriData
       .filter(k => k.total > 0)
       .sort((a, b) => b.total - a.total)
       .map(k => `
         <tr>
-          <td><span class="badge" style="background:${k.color}22;color:${k.color}">${k.kategori}</span></td>
-          <td>${transactions.filter(t => t.kategori === k.kategori).length} transaksi</td>
-          <td class="amount">Rp ${k.total.toLocaleString('id-ID')}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;">
+            <span style="background:${k.color}22;color:${k.color};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;">${k.kategori}</span>
+          </td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;">${transactions.filter(t => t.kategori === k.kategori).length} item</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #F0F3F7;font-size:13px;font-weight:700;color:#FF5A5F;text-align:right;">Rp ${k.total.toLocaleString('id-ID')}</td>
         </tr>
       `).join('');
 
@@ -62,57 +71,60 @@ export default function ExportScreen() {
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Laporan Pengeluaran</title>
-        <style>
-          * { margin:0; padding:0; box-sizing:border-box; }
-          body { font-family: 'Helvetica Neue', Arial, sans-serif; padding: 36px; color: #1A1D23; background: #fff; font-size: 14px; }
-          .header { text-align: center; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 2px solid #00C9A7; }
-          .logo { font-size: 28px; font-weight: 800; color: #00C9A7; letter-spacing: -1px; }
-          .subtitle { font-size: 13px; color: #8A92A6; margin-top: 4px; }
-          .period { font-size: 13px; color: #1A1D23; margin-top: 6px; font-weight: 600; }
-          .summary { display: flex; gap: 12px; margin-bottom: 24px; }
-          .card { flex: 1; border-radius: 12px; padding: 16px; }
-          .card-in { background: #E8F9F6; }
-          .card-out { background: #FFF1F2; }
-          .card-bal { background: #F5F7FA; }
-          .card-label { font-size: 11px; color: #8A92A6; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-          .card-value { font-size: 16px; font-weight: 700; }
-          .in { color: #00C9A7; }
-          .out { color: #FF5A5F; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-          th { background: #00C9A7; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; font-weight: 600; }
-          td { padding: 10px 12px; border-bottom: 1px solid #F0F3F7; font-size: 13px; }
-          tr:nth-child(even) td { background: #F5F7FA; }
-          .amount { font-weight: 700; color: #FF5A5F; }
-          .section-title { font-size: 15px; font-weight: 700; color: #1A1D23; margin-bottom: 12px; margin-top: 8px; }
-          .badge { display: inline-block; border-radius: 6px; padding: 2px 8px; font-size: 11px; font-weight: 600; }
-          .footer { text-align: center; color: #8A92A6; font-size: 11px; margin-top: 24px; border-top: 1px solid #E4E9F0; padding-top: 16px; }
-          .empty { text-align: center; color: #8A92A6; padding: 24px; }
-        </style>
       </head>
-      <body>
-        <div class="header">
-          <div class="logo">Money Tracker Mahasiswa</div>
-          <div class="subtitle">Laporan Pengeluaran Harian</div>
-          <div class="period">Periode: ${period}</div>
+      <body style="font-family:'Helvetica Neue',Arial,sans-serif;padding:36px;color:#1A1D23;background:#fff;font-size:14px;margin:0;">
+        <div style="text-align:center;margin-bottom:28px;padding-bottom:24px;border-bottom:3px solid #00C9A7;">
+          <div style="font-size:28px;font-weight:800;color:#00C9A7;letter-spacing:-1px;">Money Tracker Mahasiswa</div>
+          <div style="font-size:13px;color:#8A92A6;margin-top:4px;">Laporan Pengeluaran Harian</div>
+          <div style="font-size:14px;color:#1A1D23;margin-top:8px;font-weight:600;">Periode: ${period}</div>
+          <div style="font-size:12px;color:#8A92A6;margin-top:4px;">Dicetak: ${new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
         </div>
-        <div class="summary">
-          <div class="card card-in"><div class="card-label">Saldo Awal</div><div class="card-value in">Rp ${saldo_awal.toLocaleString('id-ID')}</div></div>
-          <div class="card card-out"><div class="card-label">Total Keluar</div><div class="card-value out">Rp ${totalPengeluaran.toLocaleString('id-ID')}</div></div>
-          <div class="card card-bal"><div class="card-label">Sisa Saldo</div><div class="card-value">Rp ${saldo_sekarang.toLocaleString('id-ID')}</div></div>
+
+        <div style="display:flex;gap:12px;margin-bottom:24px;">
+          <div style="flex:1;background:#E8F9F6;border-radius:12px;padding:16px;">
+            <div style="font-size:11px;color:#8A92A6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Saldo Awal</div>
+            <div style="font-size:18px;font-weight:800;color:#00C9A7;">Rp ${saldo_awal.toLocaleString('id-ID')}</div>
+          </div>
+          <div style="flex:1;background:#FFF1F2;border-radius:12px;padding:16px;">
+            <div style="font-size:11px;color:#8A92A6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Total Keluar</div>
+            <div style="font-size:18px;font-weight:800;color:#FF5A5F;">Rp ${totalPengeluaran.toLocaleString('id-ID')}</div>
+          </div>
+          <div style="flex:1;background:#F5F7FA;border-radius:12px;padding:16px;">
+            <div style="font-size:11px;color:#8A92A6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Sisa Saldo</div>
+            <div style="font-size:18px;font-weight:800;color:#1A1D23;">Rp ${saldo_sekarang.toLocaleString('id-ID')}</div>
+          </div>
         </div>
-        <div class="section-title">Rincian per Kategori</div>
+
         ${kategoriData.some(k => k.total > 0) ? `
-        <table>
-          <thead><tr><th>Kategori</th><th>Jumlah Transaksi</th><th>Total</th></tr></thead>
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px;margin-top:4px;">Rincian per Kategori</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+          <thead>
+            <tr style="background:#00C9A7;">
+              <th style="color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Kategori</th>
+              <th style="color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Jumlah</th>
+              <th style="color:#fff;padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Total</th>
+            </tr>
+          </thead>
           <tbody>${kategoriRows}</tbody>
-        </table>` : '<p class="empty">Belum ada data kategori</p>'}
-        <div class="section-title">Detail Transaksi</div>
+        </table>` : ''}
+
+        <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Detail Transaksi (${transactions.length} item)</div>
         ${transactions.length > 0 ? `
-        <table>
-          <thead><tr><th>Tanggal</th><th>Jam</th><th>Nama Barang</th><th>Kategori</th><th>Harga</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>` : '<p class="empty">Belum ada transaksi</p>'}
-        <div class="footer">Dibuat dengan Money Tracker Mahasiswa &bull; ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+          <thead>
+            <tr style="background:#00C9A7;">
+              <th style="color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Jam</th>
+              <th style="color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Nama Barang</th>
+              <th style="color:#fff;padding:10px 12px;text-align:left;font-size:12px;font-weight:600;">Kategori</th>
+              <th style="color:#fff;padding:10px 12px;text-align:right;font-size:12px;font-weight:600;">Harga</th>
+            </tr>
+          </thead>
+          <tbody>${groupRows}</tbody>
+        </table>` : '<p style="color:#8A92A6;text-align:center;padding:24px;">Belum ada transaksi</p>'}
+
+        <div style="text-align:center;color:#8A92A6;font-size:11px;border-top:1px solid #E4E9F0;padding-top:16px;margin-top:8px;">
+          Money Tracker Mahasiswa &bull; ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+        </div>
       </body>
       </html>
     `;
@@ -127,33 +139,27 @@ export default function ExportScreen() {
       const { uri } = await Print.printToFileAsync({ html, base64: false });
       const canShare = await Sharing.isAvailableAsync();
       if (canShare) {
-        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Bagikan Laporan' });
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Bagikan Laporan Pengeluaran' });
       } else {
-        alert('Fitur berbagi tidak tersedia di perangkat ini');
+        alert('Fitur berbagi tidak tersedia di perangkat ini.');
       }
     } catch (e) {
       console.error(e);
+      alert('Gagal membuat PDF. Coba lagi.');
     } finally {
       setLoading(false);
     }
   };
 
-  const StatCard = ({ label, value, color }: { label: string; value: string; color: string }) => (
-    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
-      <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
-    </View>
-  );
-
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { paddingTop: topPad + 16 }]}>
-        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Export</Text>
-        <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Laporan Pengeluaran</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>Export Laporan</Text>
+        <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>Rekap pengeluaran siap cetak</Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 90 }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.reportCard, { backgroundColor: colors.card }]}>
@@ -169,49 +175,70 @@ export default function ExportScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard label="Saldo Awal" value={formatCurrency(saldo_awal)} color="#00C9A7" />
-          <StatCard label="Total Keluar" value={formatCurrency(totalPengeluaran)} color="#FF5A5F" />
-        </View>
-        <View style={styles.statsRow}>
-          <StatCard label="Sisa Saldo" value={formatCurrency(saldo_sekarang)} color={colors.foreground} />
-          <StatCard
-            label="Kategori Terbesar"
-            value={topKategori && topKategori.total > 0 ? topKategori.kategori : '-'}
-            color={topKategori ? KATEGORI_COLORS[topKategori.kategori as Kategori] : colors.mutedForeground}
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Rincian Kategori</Text>
-        {kategoriData.map(k => (
-          <View key={k.kategori} style={[styles.kategoriRow, { backgroundColor: colors.card }]}>
-            <View style={[styles.kategoriDot, { backgroundColor: k.color }]} />
-            <Text style={[styles.kategoriName, { color: colors.foreground }]}>{k.kategori}</Text>
-            <View style={styles.barWrap}>
-              <View
-                style={[
-                  styles.bar,
-                  {
-                    backgroundColor: k.color,
-                    width: totalPengeluaran > 0 ? `${(k.total / totalPengeluaran) * 100}%` as any : '0%',
-                  },
-                ]}
-              />
-            </View>
-            <Text style={[styles.kategoriAmount, { color: colors.mutedForeground }]}>
-              {formatCurrency(k.total)}
-            </Text>
+          <View style={[styles.statCard, { backgroundColor: '#E8F9F6' }]}>
+            <Text style={[styles.statLabel, { color: '#009B81' }]}>Saldo Awal</Text>
+            <Text style={[styles.statValue, { color: '#00C9A7' }]}>{formatCurrency(saldo_awal)}</Text>
           </View>
-        ))}
-
-        <View style={[styles.infoBox, { backgroundColor: '#E8F9F6' }]}>
-          <Feather name="info" size={14} color="#00C9A7" />
-          <Text style={styles.infoText}>
-            Laporan akan diekspor sebagai PDF dan dapat dibagikan via WhatsApp, Email, dan lainnya.
-          </Text>
+          <View style={[styles.statCard, { backgroundColor: '#FFF1F2' }]}>
+            <Text style={[styles.statLabel, { color: '#CC4040' }]}>Total Keluar</Text>
+            <Text style={[styles.statValue, { color: '#FF5A5F' }]}>{formatCurrency(totalPengeluaran)}</Text>
+          </View>
         </View>
-      </ScrollView>
+        <View style={[styles.statCardFull, { backgroundColor: colors.card }]}>
+          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Sisa Saldo</Text>
+          <Text style={[styles.statValue, { color: colors.foreground }]}>{formatCurrency(saldo_sekarang)}</Text>
+        </View>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background }]}>
+        {transactions.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Rincian Kategori</Text>
+            {kategoriData.map(k => (
+              <View key={k.kategori} style={[styles.kategoriRow, { backgroundColor: colors.card }]}>
+                <View style={[styles.kategoriDot, { backgroundColor: k.color }]} />
+                <Text style={[styles.kategoriName, { color: colors.foreground }]}>{k.kategori}</Text>
+                <View style={styles.barWrap}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        backgroundColor: k.color,
+                        width: totalPengeluaran > 0 ? `${(k.total / totalPengeluaran) * 100}%` as any : '0%',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={[styles.kategoriAmount, { color: colors.mutedForeground }]}>
+                  {formatCurrency(k.total)}
+                </Text>
+              </View>
+            ))}
+
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Pratinjau Transaksi</Text>
+            {grouped.map(g => (
+              <View key={g.date} style={{ marginBottom: 8 }}>
+                <View style={[styles.dateGroupHeader, { backgroundColor: '#E8F9F6' }]}>
+                  <Text style={styles.dateGroupText}>{formatDate(g.date)}</Text>
+                  <Text style={styles.dateGroupTotal}>{formatCurrency(g.total)}</Text>
+                </View>
+                {g.transactions.map(t => (
+                  <View key={t.id} style={[styles.txRow, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                    <View style={[styles.txTime, { backgroundColor: colors.muted }]}>
+                      <Text style={[styles.txTimeText, { color: colors.mutedForeground }]}>{t.jam}</Text>
+                    </View>
+                    <View style={styles.txInfo}>
+                      <Text style={[styles.txName, { color: colors.foreground }]} numberOfLines={1}>{t.nama_barang}</Text>
+                      <View style={[styles.txBadge, { backgroundColor: `${KATEGORI_COLORS[t.kategori]}18` }]}>
+                        <Text style={[styles.txBadgeText, { color: KATEGORI_COLORS[t.kategori] }]}>{t.kategori}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.txAmount}>Rp {t.harga.toLocaleString('id-ID')}</Text>
+                  </View>
+                ))}
+              </View>
+            ))}
+          </>
+        )}
+
         <TouchableOpacity
           onPress={handleExportPDF}
           disabled={loading || transactions.length === 0}
@@ -222,41 +249,45 @@ export default function ExportScreen() {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Feather name="download" size={18} color="#fff" />
-              <Text style={styles.exportBtnText}>Export sebagai PDF</Text>
+              <Feather name="download" size={20} color="#fff" />
+              <Text style={styles.exportBtnText}>Cetak / Export PDF</Text>
             </>
           )}
         </TouchableOpacity>
-      </View>
+
+        {transactions.length === 0 && (
+          <View style={[styles.emptyBox, { backgroundColor: colors.card }]}>
+            <Feather name="inbox" size={28} color={colors.mutedForeground} />
+            <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+              Belum ada transaksi untuk diekspor.{'\n'}Tambahkan pengeluaran terlebih dahulu.
+            </Text>
+          </View>
+        )}
+
+        <View style={[styles.infoBox, { backgroundColor: '#E8F9F6' }]}>
+          <Feather name="info" size={14} color="#00C9A7" />
+          <Text style={styles.infoText}>
+            PDF berisi rekap lengkap: tanggal, jam, nama barang, kategori, dan harga. Bisa dibagikan via WhatsApp, Email, Google Drive, dll.
+          </Text>
+        </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, paddingBottom: 16 },
+  header: { paddingHorizontal: 20, paddingBottom: 8 },
   headerTitle: { fontSize: 24, fontFamily: 'Inter_700Bold' },
   headerSub: { fontSize: 13, fontFamily: 'Inter_400Regular', marginTop: 2 },
   content: { paddingHorizontal: 20, paddingTop: 8 },
   reportCard: {
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderRadius: 20, padding: 20, marginBottom: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
   },
   reportBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    marginBottom: 10,
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, marginBottom: 10,
   },
   reportBadgeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#00C9A7' },
   reportTitle: { fontSize: 18, fontFamily: 'Inter_700Bold', marginBottom: 4 },
@@ -264,65 +295,56 @@ const styles = StyleSheet.create({
   reportCount: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   statsRow: { flexDirection: 'row', gap: 10, marginBottom: 10 },
   statCard: {
-    flex: 1,
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    elevation: 1,
+    flex: 1, borderRadius: 16, padding: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  statCardFull: {
+    borderRadius: 16, padding: 16, marginBottom: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
   },
   statLabel: { fontSize: 11, fontFamily: 'Inter_400Regular', marginBottom: 6 },
-  statValue: { fontSize: 15, fontFamily: 'Inter_700Bold' },
-  sectionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', marginTop: 8, marginBottom: 10 },
+  statValue: { fontSize: 16, fontFamily: 'Inter_700Bold' },
+  sectionTitle: { fontSize: 15, fontFamily: 'Inter_600SemiBold', marginTop: 20, marginBottom: 10 },
   kategoriRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    gap: 10,
+    flexDirection: 'row', alignItems: 'center', borderRadius: 12,
+    padding: 12, marginBottom: 8, gap: 10,
   },
   kategoriDot: { width: 10, height: 10, borderRadius: 5 },
   kategoriName: { fontSize: 13, fontFamily: 'Inter_500Medium', width: 70 },
-  barWrap: {
-    flex: 1,
-    height: 6,
-    backgroundColor: '#E4E9F0',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
+  barWrap: { flex: 1, height: 6, backgroundColor: '#E4E9F0', borderRadius: 3, overflow: 'hidden' },
   bar: { height: '100%', borderRadius: 3 },
   kategoriAmount: { fontSize: 12, fontFamily: 'Inter_600SemiBold', width: 90, textAlign: 'right' },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 8,
+  dateGroupHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginBottom: 4,
   },
-  infoText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', color: '#009B81', lineHeight: 18 },
-  footer: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E4E9F0',
+  dateGroupText: { fontSize: 12, fontFamily: 'Inter_600SemiBold', color: '#009B81' },
+  dateGroupTotal: { fontSize: 12, fontFamily: 'Inter_700Bold', color: '#FF5A5F' },
+  txRow: {
+    flexDirection: 'row', alignItems: 'center', borderRadius: 12,
+    borderWidth: 1, padding: 10, marginBottom: 6, gap: 10,
   },
+  txTime: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  txTimeText: { fontSize: 12, fontFamily: 'Inter_600SemiBold' },
+  txInfo: { flex: 1, gap: 3 },
+  txName: { fontSize: 13, fontFamily: 'Inter_600SemiBold' },
+  txBadge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, alignSelf: 'flex-start' },
+  txBadgeText: { fontSize: 10, fontFamily: 'Inter_600SemiBold' },
+  txAmount: { fontSize: 13, fontFamily: 'Inter_700Bold', color: '#FF5A5F' },
   exportBtn: {
-    backgroundColor: '#00C9A7',
-    borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#00C9A7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: '#00C9A7', borderRadius: 16, paddingVertical: 17,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 20,
+    shadowColor: '#00C9A7', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 4,
   },
   exportBtnText: { color: '#fff', fontSize: 16, fontFamily: 'Inter_600SemiBold' },
+  emptyBox: {
+    borderRadius: 16, padding: 28, alignItems: 'center', gap: 10, marginTop: 8,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  emptyText: { fontSize: 13, fontFamily: 'Inter_400Regular', textAlign: 'center', lineHeight: 20 },
+  infoBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderRadius: 12, padding: 14, marginTop: 12,
+  },
+  infoText: { flex: 1, fontSize: 12, fontFamily: 'Inter_400Regular', color: '#009B81', lineHeight: 18 },
 });
