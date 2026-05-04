@@ -130,18 +130,26 @@ function buildHTML(opts: {
       <tbody>${groupRows}</tbody>
     </table>` : '<p style="color:#8A92A6;text-align:center;padding:20px;">Tidak ada transaksi.</p>'}
     <div style="text-align:center;color:#8A92A6;font-size:11px;border-top:1px solid #E4E9F0;padding-top:16px;margin-top:8px;">
-      Money Tracker Mahasiswa &bull; ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+      Duitify &bull; ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
     </div>
   </body></html>`;
 }
 
 async function sharePDF(html: string, dialogTitle: string) {
-  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  const result = await Print.printToFileAsync({ html });
+  const pdfUri = result.uri;
   const canShare = await Sharing.isAvailableAsync();
   if (canShare) {
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle });
+    await Sharing.shareAsync(pdfUri, {
+      mimeType: 'application/pdf',
+      dialogTitle,
+      UTI: 'com.adobe.pdf',
+    });
   } else {
-    alert('Fitur berbagi tidak tersedia di perangkat ini.');
+    Alert.alert(
+      'Tidak Dapat Berbagi',
+      'Perangkat ini tidak mendukung fitur berbagi file. Coba buka aplikasi Files dan cari folder cache.',
+    );
   }
 }
 
@@ -401,9 +409,8 @@ export default function ExportScreen() {
           jumlah: transactions.filter(t => t.kategori === k.kategori).length,
         })),
       });
-    } catch (e) {
-      console.error(e);
-      alert('Gagal membuat PDF. Coba lagi.');
+    } catch (e: any) {
+      Alert.alert('Gagal Export', `Tidak dapat membuat PDF.\n\nDetail: ${e?.message ?? 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -426,8 +433,8 @@ export default function ExportScreen() {
         transactions: archive.transactions,
       });
       await sharePDF(html, `Bagikan ${archive.title}`);
-    } catch (e) {
-      alert('Gagal membuat PDF. Coba lagi.');
+    } catch (e: any) {
+      Alert.alert('Gagal Export', `Tidak dapat membuat PDF.\n\nDetail: ${e?.message ?? 'Unknown error'}`);
     } finally {
       setReExporting(null);
     }
