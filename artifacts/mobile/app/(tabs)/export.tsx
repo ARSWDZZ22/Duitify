@@ -89,7 +89,7 @@ function buildHTML(opts: {
   return `<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><title>${title}</title></head>
   <body style="font-family:'Helvetica Neue',Arial,sans-serif;padding:36px;color:#1A1D23;background:#fff;font-size:14px;margin:0;">
     <div style="text-align:center;margin-bottom:28px;padding-bottom:24px;border-bottom:3px solid #00C9A7;">
-      <div style="font-size:26px;font-weight:800;color:#00C9A7;">Money Tracker Mahasiswa</div>
+      <div style="font-size:26px;font-weight:800;color:#00C9A7;">Duitify</div>
       <div style="font-size:16px;font-weight:700;margin-top:6px;">${title}</div>
       <div style="font-size:13px;color:#8A92A6;margin-top:4px;">Periode: ${period}</div>
       <div style="font-size:12px;color:#8A92A6;margin-top:2px;">Dicetak: ${exportedAt}</div>
